@@ -12,6 +12,7 @@
 	.extern wdt_c_handler
 WDT:
 	; start of prologue
+	; save all registers
 	PUSH	R15
 	PUSH	R14
 	PUSH	R13

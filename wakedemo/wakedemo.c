@@ -14,7 +14,7 @@
 
 #define SWITCHES 15
 
-char blue = 31, green = 0, red = 31;
+char blue = 31, green = 0, red = 31; // green goes to 64
 unsigned char step = 0;
 
 static char 
@@ -46,7 +46,6 @@ switch_interrupt_handler()
   switches = ~p2val & SWITCHES;
 }
 
-
 // axis zero for col, axis 1 for row
 
 short drawPos[2] = {1,10}, controlPos[2] = {2, 10};
@@ -57,7 +56,6 @@ draw_ball(int col, int row, unsigned short color)
 {
   fillRectangle(col-1, row-1, 3, 3, color);
 }
-
 
 void
 screen_update_ball()
@@ -72,9 +70,8 @@ screen_update_ball()
     drawPos[axis] = controlPos[axis];
   draw_ball(drawPos[0], drawPos[1], COLOR_WHITE); /* draw */
 }
-  
 
-short redrawScreen = 1;
+short redrawScreen = 1; // as long as it's zero, cpu is at sleep
 u_int controlFontColor = COLOR_GREEN;
 
 void wdt_c_handler()
@@ -83,7 +80,6 @@ void wdt_c_handler()
 
   secCount ++;
   if (secCount >= 25) {		/* 10/sec */
-   
     {				/* move ball */
       short oldCol = controlPos[0];
       short newCol = oldCol + colVelocity;
@@ -157,8 +153,6 @@ screen_update_hourglass()
     }
   }
 }  
-
-
     
 void
 update_shape()
@@ -166,8 +160,6 @@ update_shape()
   screen_update_ball();
   screen_update_hourglass();
 }
-   
-
 
 void
 __interrupt_vec(PORT2_VECTOR) Port_2(){
