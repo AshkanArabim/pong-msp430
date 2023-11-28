@@ -50,30 +50,13 @@ int t_paddle_pos[] = {0, 10};
 int b_paddle_pos[] = {0, 145};
 int ball_pos[] = {20, 20};
 
-void drawRect(int horiz, int vert, int shoriz, int svert, int color) {
-  for (int i = horiz; i < horiz + shoriz; i++) {
-    for (int j = vert; j < vert + svert; j++) {
+void drawRect(int pos[], int dims[], int color) {
+  for (int i = pos[0]; i < pos[0] + dims[0]; i++) {
+    for (int j = pos[1]; j < pos[1] + dims[1]; j++) {
       drawPixel(i, j, color);
     }
   }
 }
-
-void moveRect(int old_horiz, int old_vert, int old_shoriz, int old_svert,
-              int bg_color, int offset_horiz, int offset_vert, int color) {
-  drawRect(old_horiz, old_vert, old_shoriz, old_svert, bg_color);
-  drawRect(old_horiz + offset_horiz, old_vert + offset_vert, old_shoriz,
-           old_svert, color);
-}
-
-//// states
-// switches
-int switches = 0;
-
-// asset directions (e.g. for paddles, -1 for left, 1 for right)
-int t_paddle_dir = 1; 
-int b_paddle_dir = 1;
-int ball_dir[] = {1, 1};
-
 
 void main() {
   configureClocks();
@@ -88,37 +71,22 @@ void main() {
   clearScreen(bg_clr);
 
   // draw paddles
-  drawRect(t_paddle_pos[0], t_paddle_pos[1], paddle_dims[0], paddle_dims[1],
-           obj_clr);
-  drawRect(b_paddle_pos[0], b_paddle_pos[1], paddle_dims[0], paddle_dims[1],
-           obj_clr);
+  drawRect(t_paddle_pos, paddle_dims, obj_clr);
+  drawRect(b_paddle_pos, paddle_dims, obj_clr);
 
   // draw ball
-  drawRect(ball_pos[0], ball_pos[1], ball_dims[0], ball_dims[1], obj_clr);
+  drawRect(ball_pos, ball_dims, obj_clr);
 
   // continuous game loop
   while (1) {
     // update top paddle
-    if (t_paddle_dir) {
-      moveRect(t_paddle_pos[0], t_paddle_pos[1], paddle_dims[0], paddle_dims[1],
-               bg_clr, t_paddle_dir, 0, obj_clr);
-      t_paddle_pos[0] += t_paddle_dir;
-    }
+    moveRect(t_paddle_pos, paddle_dims, t_paddle_dir, bg_clr, obj_clr);
 
     // update bottom paddle
-    if (t_paddle_dir) {
-      moveRect(b_paddle_pos[0], b_paddle_pos[1], paddle_dims[0], paddle_dims[1],
-               bg_clr, b_paddle_dir, 0, obj_clr);
-      b_paddle_pos[0] += b_paddle_dir;
-    }
+    moveRect(b_paddle_pos, paddle_dims, b_paddle_dir, bg_clr, obj_clr);
 
     // update ball 
-    if (ball_dir[0]) {
-      moveRect(ball_pos[0], ball_pos[1], ball_dims[0], ball_dims[1],
-               bg_clr, ball_dir[0], ball_dir[1], obj_clr);
-      ball_pos[0] += ball_dir[0];
-      ball_pos[1] += ball_dir[1];
-    }
+    moveRect(ball_pos, ball_dims, ball_dir, bg_clr, obj_clr);
 
     // is ball hitting a wall
     if ((ball_pos[0] <= 0) || (ball_pos[0] + ball_dims[0] >= display_dims[0])) {
@@ -138,16 +106,16 @@ void switch_interrupt_handler() {
   switches = ~p2val & SWITCHES;
 
   // s1 --> set top dir to -1 if 0, else 0
-  if (switches & SW1) t_paddle_dir = -1;
+  if (switches & SW1) t_paddle_dir[0] = -1;
 
   // s2 --> set top dir to 1 if 0, else 0
-  if (switches & SW2) t_paddle_dir = 1;
+  if (switches & SW2) t_paddle_dir[0] = 1;
 
   // s3 --> set bottom dir to -1 if 0, else 0
-  if (switches & SW3) b_paddle_dir = -1;
+  if (switches & SW3) b_paddle_dir[0] = -1;
 
   // s4 --> set bottom dir to 1 if 0, else 0
-  if (switches & SW4) b_paddle_dir = 1;
+  if (switches & SW4) b_paddle_dir[0] = 1;
 }
 
 void __interrupt_vec(PORT2_VECTOR) Port_2() {
