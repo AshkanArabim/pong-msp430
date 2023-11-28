@@ -58,6 +58,22 @@ void drawRect(int pos[], int dims[], int color) {
   }
 }
 
+void moveRect(int pos[], int dims[], int dir[], int bg_color, int color) {
+  drawRect(pos, dims, bg_color);
+  pos[0] += dir[0];
+  pos[1] += dir[1];
+  drawRect(pos, dims, color);
+}
+
+//// states
+// switches
+int switches = 0;
+
+// asset directions (e.g. for paddles, -1 for left, 1 for right)
+int t_paddle_dir[] = {1, 0}; 
+int b_paddle_dir[] = {1, 0};
+int ball_dir[] = {1, 1};
+
 void main() {
   configureClocks();
   lcd_init();
@@ -128,10 +144,4 @@ void __interrupt_vec(PORT2_VECTOR) Port_2() {
 
 // watchdog timer
 void __interrupt_vec(WDT_VECTOR) WDT() {
-  // JUNK --> handled by other interrupt vec
-  // if caused by S1 - S4, handle with paddle-movers
-  // if (P2IFG & SWITCHES) {
-  //   P2IFG &= ~SWITCHES; // clear sw interrupts
-  //   switch_interrupt_handler();
-  // }
 }
