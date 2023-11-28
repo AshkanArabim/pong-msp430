@@ -38,11 +38,17 @@ void switch_init() /* setup switch */
 
 // paused
 
+// display resolution: 128 x 160
+int display_dims[] = {128, 160};
+
+// asset dimensions
 int paddle_dims[] = {30, 5};
+int ball_dims[] = {4, 4};
 
 // horiz, vert
 int t_paddle_pos[] = {0, 10};
 int b_paddle_pos[] = {0, 145};
+int ball_pos[] = {20, 20};
 
 void drawRect(int horiz, int vert, int shoriz, int svert, int color) {
   for (int i = horiz; i < horiz + shoriz; i++) {
@@ -63,9 +69,11 @@ void moveRect(int old_horiz, int old_vert, int old_shoriz, int old_svert,
 // switches
 int switches = 0;
 
-// paddle movement. -1 for left, 1 for right
-int t_paddle_dir = 0; 
-int b_paddle_dir = 0;
+// asset directions (e.g. for paddles, -1 for left, 1 for right)
+int t_paddle_dir = 1; 
+int b_paddle_dir = 1;
+int ball_dir[] = {1, 1};
+
 
 void main() {
   configureClocks();
@@ -86,6 +94,7 @@ void main() {
            obj_clr);
 
   // draw ball
+  drawRect(ball_pos[0], ball_pos[1], ball_dims[0], ball_dims[1], obj_clr);
 
   // continuous game loop
   while (1) {
@@ -103,10 +112,21 @@ void main() {
       b_paddle_pos[0] += b_paddle_dir;
     }
 
-    // update ball
+    // update ball 
+    if (ball_dir[0]) {
+      moveRect(ball_pos[0], ball_pos[1], ball_dims[0], ball_dims[1],
+               bg_clr, ball_dir[0], ball_dir[1], obj_clr);
+      ball_pos[0] += ball_dir[0];
+      ball_pos[1] += ball_dir[1];
+    }
 
-    // is ball hitting a wall / paddle?
-    // make noise
+    // is ball hitting a wall
+    if ((ball_pos[0] <= 0) || (ball_pos[0] + ball_dims[0] >= display_dims[0])) {
+      ball_dir[0] = -ball_dir[0];
+      // TODO: beep
+    }
+
+    // is ball hitting a paddle
 
     // did ball exit the field?
   }
