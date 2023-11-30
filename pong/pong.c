@@ -46,9 +46,18 @@ int paddle_dims[] = {30, 5};
 int ball_dims[] = {4, 4};
 
 // horiz, vert
-int t_paddle_pos[] = {0, 10};
+int t_paddle_pos[] = {98, 10};
 int b_paddle_pos[] = {0, 145};
 int ball_pos[] = {20, 20};
+
+//// states
+// switches
+int switches = 0;
+
+// asset directions (e.g. for paddles, -1 for left, 1 for right)
+int t_paddle_dir[] = {-2, 0}; 
+int b_paddle_dir[] = {2, 0};
+int ball_dir[] = {1, 1};
 
 void drawRect(int pos[], int dims[], int color) {
   for (int i = pos[0]; i < pos[0] + dims[0]; i++) {
@@ -65,14 +74,26 @@ void moveRect(int pos[], int dims[], int dir[], int bg_color, int color) {
   drawRect(pos, dims, color);
 }
 
-//// states
-// switches
-int switches = 0;
+int rangesOverlap(int r1[], int r2[]) {
+  // be sure that the lower number is first
+  return (r1[0] <= r2[1] && r1[0] >= r2[0]) 
+    || (r2[0] <= r1[1] && r2[0] >= r1[0]);
+}
 
-// asset directions (e.g. for paddles, -1 for left, 1 for right)
-int t_paddle_dir[] = {1, 0}; 
-int b_paddle_dir[] = {1, 0};
-int ball_dir[] = {1, 1};
+int boxesCollide(int b1pos[], int b1dims[], int b2pos[], int b2dims[]) {
+
+  // check horizontal overlap
+  int b1_bounds_horiz[] = {b1pos[0], b1pos[0] + b1dims[0]};
+  int b2_bounds_horiz[] = {b2pos[0], b2pos[0] + b2dims[0]};
+  int horiz_overlap = rangesOverlap(b1_bounds_horiz, b2_bounds_horiz);
+  
+  // check vertical overlap
+  int b1_bounds_vert[] = {b1pos[1], b1pos[1] + b1dims[1]};
+  int b2_bounds_vert[] = {b2pos[1], b2pos[1] + b2dims[1]};
+  int vert_overlap = rangesOverlap(b1_bounds_vert, b2_bounds_vert);
+
+  return horiz_overlap && vert_overlap;
+}
 
 void main() {
   configureClocks();
@@ -109,29 +130,54 @@ void main() {
       ball_dir[0] = -ball_dir[0];
       // TODO: beep
     }
+    
+    if ( // is ball hitting bottom paddle?
+      boxesCollide(b_paddle_pos, paddle_dims, ball_pos, ball_dims)
+    ) {
+      ball_dir[1] = -1;
+    }
 
-    // is ball hitting a paddle
+    if ( // is ball hitting top paddle?
+      boxesCollide(t_paddle_pos, paddle_dims, ball_pos, ball_dims)
+    ) {
+      ball_dir[1] = 1;
+    }
 
     // did ball exit the field?
+    // if (ball_pos[1] <= 0 || ball_pos[1] + ball_dims[1] >= display_dims[1]) {
+    //   clearScreen(COLOR_RED);
+    //   break;
+    // }
+
+    // did top paddle hit the edge?
+    // if (t_paddle_pos[0] <= 0 || t_paddle_pos[0] + paddle_dims[0] >= display_dims[0]) {
+    //   t_paddle_dir[0] = 0;
+    // }
+
+    // did bottom paddle git the edge?
+    if (b_paddle_pos[0] <= 0 || b_paddle_pos[0] + paddle_dims[0] >= display_dims[0]) {
+      b_paddle_dir[0] = 0;
+    }
   }
 }
 
 void switch_interrupt_handler() {
   // save toggled switches and flip sensitivity
   char p2val = switch_update_interrupt_sense();
+  // TODO
   switches = ~p2val & SWITCHES;
 
   // s1 --> set top dir to -1 if 0, else 0
-  if (switches & SW1) t_paddle_dir[0] = -1;
+  if (switches & SW1) t_paddle_dir[0] = -2;
 
   // s2 --> set top dir to 1 if 0, else 0
-  if (switches & SW2) t_paddle_dir[0] = 1;
+  if (switches & SW2) t_paddle_dir[0] = 2;
 
   // s3 --> set bottom dir to -1 if 0, else 0
-  if (switches & SW3) b_paddle_dir[0] = -1;
+  if (switches & SW3) b_paddle_dir[0] = -2;
 
   // s4 --> set bottom dir to 1 if 0, else 0
-  if (switches & SW4) b_paddle_dir[0] = 1;
+  if (switches & SW4) b_paddle_dir[0] = 2;
 }
 
 void __interrupt_vec(PORT2_VECTOR) Port_2() {
