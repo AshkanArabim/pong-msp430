@@ -12,12 +12,33 @@
 
 #define SWITCHES 15
 
+// define side switch
+#define SW0 BIT3
+
+static char sw0_update_interrupt_sense() {
+  char p1val = P1IN;
+  /* update switch interrupt to detect changes from current buttons */
+  P1IES |= (p1val & SW0);  /* if switch up, sense down */
+  P1IES &= (p1val | ~SW0); /* if switch down, sense up */
+  return p1val;
+}
+
 static char switch_update_interrupt_sense() {
   char p2val = P2IN;
   /* update switch interrupt to detect changes from current buttons */
   P2IES |= (p2val & SWITCHES);  /* if switch up, sense down */
   P2IES &= (p2val | ~SWITCHES); /* if switch down, sense up */
   return p2val;
+}
+
+void 
+sw0_init()			/* setup switch */
+{  
+  P1REN |= SW0;		/* enables resistors for SW0 */
+  P1IE |= SW0;		/* enable interrupts from SW0 */
+  P1OUT |= SW0;		/* pull-ups for SW0 */
+  P1DIR &= ~SW0;		/* set SW0' bits for input */
+  sw0_update_interrupt_sense();
 }
 
 void switch_init() /* setup switch */
@@ -99,6 +120,7 @@ void main() {
   configureClocks();
   lcd_init();
   switch_init();
+  sw0_init();
   enableWDTInterrupts();  // enable WDT
   or_sr(0x8);             // enable interrupts
 
@@ -144,15 +166,15 @@ void main() {
     }
 
     // did ball exit the field?
-    // if (ball_pos[1] <= 0 || ball_pos[1] + ball_dims[1] >= display_dims[1]) {
-    //   clearScreen(COLOR_RED);
-    //   break;
-    // }
+    if (ball_pos[1] <= 0 || ball_pos[1] + ball_dims[1] >= display_dims[1]) {
+      clearScreen(COLOR_RED);
+      break;
+    }
 
     // did top paddle hit the edge?
-    // if (t_paddle_pos[0] <= 0 || t_paddle_pos[0] + paddle_dims[0] >= display_dims[0]) {
-    //   t_paddle_dir[0] = 0;
-    // }
+    if (t_paddle_pos[0] <= 0 || t_paddle_pos[0] + paddle_dims[0] >= display_dims[0]) {
+      t_paddle_dir[0] = 0;
+    }
 
     // did bottom paddle git the edge?
     if (b_paddle_pos[0] <= 0 || b_paddle_pos[0] + paddle_dims[0] >= display_dims[0]) {
@@ -161,17 +183,28 @@ void main() {
   }
 }
 
+void sw0_interrupt_handler() {
+  // save toggled switches and flip sensitivity
+  char p1val = sw0_update_interrupt_sense();
+  switches = ~p1val & SW0;
+
+  // sw0 will handle sw1 logic
+  if (switches & SW0) t_paddle_dir[0] = -2;
+}
+
 void switch_interrupt_handler() {
   // save toggled switches and flip sensitivity
   char p2val = switch_update_interrupt_sense();
-  // TODO
   switches = ~p2val & SWITCHES;
 
-  // s1 --> set top dir to -1 if 0, else 0
-  if (switches & SW1) t_paddle_dir[0] = -2;
+  // // s1 --> set top dir to -1 if 0, else 0
+  // if (switches & SW1) t_paddle_dir[0] = -2;
 
-  // s2 --> set top dir to 1 if 0, else 0
-  if (switches & SW2) t_paddle_dir[0] = 2;
+  // // s2 --> set top dir to 1 if 0, else 0
+  // if (switches & SW2) t_paddle_dir[0] = 2;
+
+  // sw1 is now sw2 because sw2 is problematic
+  if (switches & SW1) t_paddle_dir[0] = 2;
 
   // s3 --> set bottom dir to -1 if 0, else 0
   if (switches & SW3) b_paddle_dir[0] = -2;
@@ -180,6 +213,14 @@ void switch_interrupt_handler() {
   if (switches & SW4) b_paddle_dir[0] = 2;
 }
 
+void __interrupt_vec(PORT1_VECTOR) port_1() {
+  if (P1IFG & SW0) {
+    P1IFG &= ~SW0;
+    sw0_interrupt_handler();
+  }
+}
+
+// for front buttons
 void __interrupt_vec(PORT2_VECTOR) Port_2() {
   if (P2IFG & SWITCHES) {
     // call the switch handler
