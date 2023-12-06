@@ -3,3 +3,4 @@
 *.elf
 *.a
 h/
+*experiments*
