@@ -9,6 +9,9 @@ Features include:
 
 Interested in this project? Fork it and make it better!
 
+## Demo
+Check out this video from my YouTube channel: https://youtu.be/WTMFzDpH8JE?si=mcIu0uIiT4K9P9I9
+
 ## Installation
 - Install required C development packages (Linux only)
     - I'll post instructions soon...
