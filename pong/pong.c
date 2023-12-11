@@ -3,6 +3,8 @@
 #include <lcdutils.h>
 #include <lcddraw.h>
 #include "buzzer.h"
+#include "lcddraw.h"
+#include "lcdutils.h"
 
 #define LED BIT6 /* note that bit zero req'd for display */
 
@@ -271,10 +273,6 @@ void main() {
     if (redrawScreen) {
       redrawScreen = 0;
 
-      // DEBUG: check if this even gets called --> yes.
-      // clearScreen(COLOR_RED);
-      // return;
-
       update_shape();
     }
     P1OUT &= ~LED;	/* led off */
@@ -283,7 +281,10 @@ void main() {
   }
 
   // game over
-  clearScreen(COLOR_RED);
+  clearScreen(BG_CLR);
+  drawString5x7(3, 3, "Game Over!", OBJ_CLR, BG_CLR);
+  P1OUT &= ~LED;	/* led off */
+  or_sr(0x10);	/**< CPU OFF */
 }
 
 void sw0_interrupt_handler() {
