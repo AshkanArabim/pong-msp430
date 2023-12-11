@@ -27,15 +27,18 @@ const int LOSE_TONE = 2048;
 const int QUIET_TONE = 8;
 const int BUZZ_LEN = 10;
 
+const int BALL_POS_INIT[] = {30, 10};
+const int BALL_DIR_INIT[] = {1, 1};
+
+int DISPLAY_DIMS[] = {128, 160};
+
 // buzzer attrs
 int buzz_remaining = 0;
 int buzz_tone = BNC_TONE;
 
-// end game if it's over
-char game_over = 0;
-
-// display resolution: 128 x 160
-int display_dims[] = {128, 160};
+// scores
+char t_score = 0;
+char b_score = 0;
 
 // asset dimensions
 int paddle_dims[] = {30, 5};
@@ -45,7 +48,9 @@ int ball_dims[] = {3, 3};
 // old vals used for erasing previous pixels.
 int t_paddle_pos[] = {98, 10, 98, 10};
 int b_paddle_pos[] = {0, 145, 0, 145};
-int ball_pos[] = {20, 20, 20, 20};
+int ball_pos[] = {
+  BALL_POS_INIT[0], BALL_POS_INIT[1], BALL_POS_INIT[0], BALL_POS_INIT[1]
+};
 
 // do we need to render anything? 
 char redrawScreen = 0;
@@ -171,12 +176,27 @@ int boxesCollide(int b1pos[], int b1dims[], int b2pos[], int b2dims[]) {
 }
 
 void update_shape() {
+  // update top score
+  // TODO: fix
+  drawChar5x7(DISPLAY_DIMS[0] / 2 - 2, 0, 48 + t_score, OBJ_CLR, BG_CLR);
+
+  // update bottom score
+  drawChar5x7(
+    DISPLAY_DIMS[0] / 2 - 2, DISPLAY_DIMS[1] - 7, 48 + b_score, OBJ_CLR, BG_CLR
+  );
+
+  // update physics
   moveRect(ball_pos, ball_dims);
   moveRectDiffX(t_paddle_pos, paddle_dims);
   moveRectDiffX(b_paddle_pos, paddle_dims);
 }
 
 void wdt_c_handler() {
+  // don't do anything if game over
+  if (t_score > 5 || b_score > 5) {
+    return;
+  }
+
   static int secCount = 1;
   secCount ++;
 
@@ -206,7 +226,7 @@ void wdt_c_handler() {
     b_paddle_pos[1] += b_paddle_dir[1];
 
     // is ball hitting a wall
-    if ((ball_pos[0] <= 0) || (ball_pos[0] + ball_dims[0] >= display_dims[0])) {
+    if ((ball_pos[0] <= 0) || (ball_pos[0] + ball_dims[0] >= DISPLAY_DIMS[0])) {
       ball_dir[0] = -ball_dir[0];
       buzz_remaining = BUZZ_LEN;
       buzz_tone = BNC_TONE;
@@ -228,20 +248,30 @@ void wdt_c_handler() {
       buzz_tone = BNC_TONE;
     }
 
-    // did ball exit the field?
-    if (ball_pos[1] <= 0 || ball_pos[1] + ball_dims[1] >= display_dims[1]) {
-      game_over = 1;
+    // did ball exit field?
+    if (ball_pos[1] <= 0 || ball_pos[1] + ball_dims[1] >= DISPLAY_DIMS[1]) {
+      if (ball_pos[1] <= 0) {
+        b_score++;
+      } else {
+        t_score++;
+      }
       buzz_remaining = BUZZ_LEN;
       buzz_tone = LOSE_TONE;
+      // reposition ball
+      ball_pos[0] = BALL_POS_INIT[0];
+      ball_pos[1] = BALL_POS_INIT[1];
+      // reset ball direction
+      ball_dir[0] = BALL_DIR_INIT[0];
+      ball_dir[1] = BALL_DIR_INIT[1];
     }
 
     // did top paddle hit the edge?
-    if (t_paddle_pos[0] <= 0 || t_paddle_pos[0] + paddle_dims[0] >= display_dims[0]) {
+    if (t_paddle_pos[0] <= 0 || t_paddle_pos[0] + paddle_dims[0] >= DISPLAY_DIMS[0]) {
       t_paddle_dir[0] = 0;
     }
 
     // did bottom paddle git the edge?
-    if (b_paddle_pos[0] <= 0 || b_paddle_pos[0] + paddle_dims[0] >= display_dims[0]) {
+    if (b_paddle_pos[0] <= 0 || b_paddle_pos[0] + paddle_dims[0] >= DISPLAY_DIMS[0]) {
       b_paddle_dir[0] = 0;
     }
   }
@@ -269,7 +299,7 @@ void main() {
   // draw ball
   drawRect(ball_pos, ball_dims, OBJ_CLR);
 
-  while (!game_over) {
+  while (t_score < 5 && b_score < 5) {
     if (redrawScreen) {
       redrawScreen = 0;
 
@@ -282,7 +312,11 @@ void main() {
 
   // game over
   clearScreen(BG_CLR);
-  drawString5x7(3, 3, "Game Over!", OBJ_CLR, BG_CLR);
+  if (t_score > b_score) {
+    drawString5x7(0, 0, "Top player won!", OBJ_CLR, BG_CLR);
+  } else {
+    drawString5x7(0, 0, "Bottom player won!", OBJ_CLR, BG_CLR);
+  }
   P1OUT &= ~LED;	/* led off */
   or_sr(0x10);	/**< CPU OFF */
 }
