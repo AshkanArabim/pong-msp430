@@ -1,4 +1,4 @@
-# arch1-project3-lcd
+# Pong for MSP430G2
 
 This is a simple pong game I've made for my computer organization class. 
 
