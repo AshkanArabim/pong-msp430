@@ -94,9 +94,9 @@ void wdt_c_handler()
       if (switches & SW2) blue = (blue + 2) % 32;
       if (switches & SW1) red = (red - 3) % 32;
       if (step <= 30)
-	step ++;
+        step ++;
       else
-	step = 0;
+        step = 0;
       secCount = 0;
     }
     if (switches & SW4) return;
