@@ -142,7 +142,6 @@ void moveRectDiffX(int pos[], int dims[]) {
     freed_rect_pos[0] = pos[0] + dims[0];
   }
 
-  // \\confirmed//
   // cover freed pixels
   drawRect(freed_rect_pos, freed_rect_dims, BG_CLR);
 
@@ -177,7 +176,6 @@ int boxesCollide(int b1pos[], int b1dims[], int b2pos[], int b2dims[]) {
 
 void update_shape() {
   // update top score
-  // TODO: fix
   drawChar5x7(DISPLAY_DIMS[0] / 2 - 2, 0, 48 + t_score, OBJ_CLR, BG_CLR);
 
   // update bottom score
@@ -345,6 +343,7 @@ void switch_interrupt_handler() {
   if (switches & SW4) b_paddle_dir[0] = 2;
 }
 
+// for side button
 void __interrupt_vec(PORT1_VECTOR) port_1() {
   if (P1IFG & SW0) {
     P1IFG &= ~SW0;
