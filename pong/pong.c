@@ -2,6 +2,7 @@
 #include <libTimer.h>
 #include <lcdutils.h>
 #include <lcddraw.h>
+#include "buzzer.h"
 
 #define LED BIT6 /* note that bit zero req'd for display */
 
@@ -14,6 +15,19 @@
 
 // define side switch
 #define SW0 BIT3
+
+// constants
+const int BG_CLR = COLOR_BLACK;
+const int OBJ_CLR = COLOR_WHITE;
+
+const int BNC_TONE = 512;
+const int LOSE_TONE = 2048;
+const int QUIET_TONE = 8;
+const int BUZZ_LEN = 10;
+
+// buzzer attrs
+int buzz_remaining = 0;
+int buzz_tone = BNC_TONE;
 
 // end game if it's over
 char game_over = 0;
@@ -39,9 +53,6 @@ int switches = 0;
 int t_paddle_dir[] = {-2, 0}; 
 int b_paddle_dir[] = {2, 0};
 int ball_dir[] = {1, 1};
-
-int bg_clr = COLOR_BLACK;
-int obj_clr = COLOR_WHITE;
 
 static char sw0_update_interrupt_sense() {
   char p1val = P1IN;
@@ -94,11 +105,11 @@ void moveRect(int pos[], int dims[]) {
   int old_rect_pos[] = {pos[2], pos[3]};
 
   // clear old rectangle
-  drawRect(old_rect_pos, dims, bg_clr);
+  drawRect(old_rect_pos, dims, BG_CLR);
 
   // new reclangle pos are implicit since first and second index don't change
   // draw new rectangle
-  drawRect(curr_rect_pos, dims, obj_clr);
+  drawRect(curr_rect_pos, dims, OBJ_CLR);
 
   // save current reclangle as old position
   pos[2] = curr_rect_pos[0];
@@ -126,10 +137,10 @@ void moveRectDiffX(int pos[], int dims[]) {
 
   // \\confirmed//
   // cover freed pixels
-  drawRect(freed_rect_pos, freed_rect_dims, bg_clr);
+  drawRect(freed_rect_pos, freed_rect_dims, BG_CLR);
 
   // draw new pixels
-  drawRect(curr_rect_pos, dims, obj_clr);  
+  drawRect(curr_rect_pos, dims, OBJ_CLR);  
 
   // save current rectangle pos as old state
   pos[2] = curr_rect_pos[0];
@@ -165,10 +176,17 @@ void update_shape() {
 
 void wdt_c_handler() {
   static int secCount = 1;
-
   secCount ++;
 
-  // TODO: reduce frequency for ALL of this
+  // set buzzer if necessary
+  if (buzz_remaining > 0) {
+    buzz_remaining--;
+    buzzer_set_period(buzz_tone);
+  } else if (buzz_remaining == 0) {
+    buzzer_set_period(QUIET_TONE);
+  }
+
+  // update physical params
   if (secCount % 5 == 0) {
     secCount = 1;
     
@@ -188,24 +206,31 @@ void wdt_c_handler() {
     // is ball hitting a wall
     if ((ball_pos[0] <= 0) || (ball_pos[0] + ball_dims[0] >= display_dims[0])) {
       ball_dir[0] = -ball_dir[0];
-      // TODO: beep
+      buzz_remaining = BUZZ_LEN;
+      buzz_tone = BNC_TONE;
     }
     
     if ( // is ball hitting bottom paddle?
       boxesCollide(b_paddle_pos, paddle_dims, ball_pos, ball_dims)
     ) {
       ball_dir[1] = -1;
+      buzz_remaining = BUZZ_LEN;
+      buzz_tone = BNC_TONE;
     }
 
     if ( // is ball hitting top paddle?
       boxesCollide(t_paddle_pos, paddle_dims, ball_pos, ball_dims)
     ) {
       ball_dir[1] = 1;
+      buzz_remaining = BUZZ_LEN;
+      buzz_tone = BNC_TONE;
     }
 
     // did ball exit the field?
     if (ball_pos[1] <= 0 || ball_pos[1] + ball_dims[1] >= display_dims[1]) {
       game_over = 1;
+      buzz_remaining = BUZZ_LEN;
+      buzz_tone = LOSE_TONE;
     }
 
     // did top paddle hit the edge?
@@ -225,6 +250,7 @@ void main() {
   P1DIR |= LED;		/**< Green led on when CPU on */
   P1OUT |= LED;
   configureClocks();
+  buzzer_init();
   lcd_init();
   switch_init();
   sw0_init();
@@ -232,14 +258,14 @@ void main() {
   enableWDTInterrupts();      /**< enable periodic interrupt */
   or_sr(0x8);	              /**< GIE (enable interrupts) */
   
-  clearScreen(bg_clr);
+  clearScreen(BG_CLR);
 
   // draw paddles
-  drawRect(t_paddle_pos, paddle_dims, obj_clr);
-  drawRect(b_paddle_pos, paddle_dims, obj_clr);
+  drawRect(t_paddle_pos, paddle_dims, OBJ_CLR);
+  drawRect(b_paddle_pos, paddle_dims, OBJ_CLR);
 
   // draw ball
-  drawRect(ball_pos, ball_dims, obj_clr);
+  drawRect(ball_pos, ball_dims, OBJ_CLR);
 
   while (!game_over) {
     if (redrawScreen) {
