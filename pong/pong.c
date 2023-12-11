@@ -15,6 +15,34 @@
 // define side switch
 #define SW0 BIT3
 
+// end game if it's over
+char game_over = 0;
+
+// display resolution: 128 x 160
+int display_dims[] = {128, 160};
+
+// asset dimensions
+int paddle_dims[] = {30, 5};
+int ball_dims[] = {3, 3}; 
+
+// horiz, vert, old horiz, old vert
+// old vals used for erasing previous pixels.
+int t_paddle_pos[] = {98, 10, 98, 10};
+int b_paddle_pos[] = {0, 145, 0, 145};
+int ball_pos[] = {20, 20, 20, 20};
+
+// do we need to render anything? 
+char redrawScreen = 0;
+int switches = 0;
+
+// asset directions (e.g. for paddles, -1 for left, 1 for right)
+int t_paddle_dir[] = {-2, 0}; 
+int b_paddle_dir[] = {2, 0};
+int ball_dir[] = {1, 1};
+
+int bg_clr = COLOR_BLACK;
+int obj_clr = COLOR_WHITE;
+
 static char sw0_update_interrupt_sense() {
   char p1val = P1IN;
   /* update switch interrupt to detect changes from current buttons */
@@ -50,36 +78,6 @@ void switch_init() /* setup switch */
   switch_update_interrupt_sense();
 }
 
-// states:
-// vertical ball direction
-// horizontal ball direction
-
-// top paddle position
-// bottom paddle position
-
-// paused
-
-// display resolution: 128 x 160
-int display_dims[] = {128, 160};
-
-// asset dimensions
-int paddle_dims[] = {30, 5};
-int ball_dims[] = {4, 4};
-
-// horiz, vert
-int t_paddle_pos[] = {98, 10};
-int b_paddle_pos[] = {0, 145};
-int ball_pos[] = {20, 20};
-
-//// states
-// switches
-int switches = 0;
-
-// asset directions (e.g. for paddles, -1 for left, 1 for right)
-int t_paddle_dir[] = {-2, 0}; 
-int b_paddle_dir[] = {2, 0};
-int ball_dir[] = {1, 1};
-
 void drawRect(int pos[], int dims[], int color) {
   for (int i = pos[0]; i < pos[0] + dims[0]; i++) {
     for (int j = pos[1]; j < pos[1] + dims[1]; j++) {
@@ -88,11 +86,39 @@ void drawRect(int pos[], int dims[], int color) {
   }
 }
 
-void moveRect(int pos[], int dims[], int dir[], int bg_color, int color) {
-  drawRect(pos, dims, bg_color);
-  pos[0] += dir[0];
-  pos[1] += dir[1];
-  drawRect(pos, dims, color);
+void moveRect(int pos[], int dims[]) {
+  // get old rectangle pos
+  int old_rect_pos[] = {pos[2], pos[3]};
+  // clear old rectangle
+  drawRect(old_rect_pos, dims, bg_clr);
+
+  // new reclangle pos are implicit since first and second index don't change
+  // draw new rectangle
+  drawRect(pos, dims, obj_clr);
+}
+
+// clear only non-overlapping old pixels, draw non-overlapping new ones
+// only cares about x. it's hard (and unnecessary) to do both axes
+void moveRectDiffX(int pos[], int dims[]) {
+  int freed_rect_dims[] = {pos[0] - pos[2], dims[1]};
+  char goingleft = 0;
+  if (freed_rect_dims[0] < 0) {
+    freed_rect_dims[0] = -freed_rect_dims[0];
+    goingleft = 1;
+  }
+  
+  // get starting position of difference rectangle
+  int freed_rect_pos[] = {pos[2], pos[1]};
+  if (goingleft) {
+    freed_rect_pos[0] = pos[0] + dims[0];
+  }
+
+  // \\confirmed//
+  // cover freed pixels
+  drawRect(freed_rect_pos, freed_rect_dims, bg_clr);
+
+  // draw new pixels
+  drawRect(pos, dims, obj_clr);  
 }
 
 int rangesOverlap(int r1[], int r2[]) {
@@ -116,36 +142,39 @@ int boxesCollide(int b1pos[], int b1dims[], int b2pos[], int b2dims[]) {
   return horiz_overlap && vert_overlap;
 }
 
-void main() {
-  configureClocks();
-  lcd_init();
-  switch_init();
-  sw0_init();
-  enableWDTInterrupts();  // enable WDT
-  or_sr(0x8);             // enable interrupts
+void update_shape() {
+  moveRect(ball_pos, ball_dims);
+  moveRectDiffX(t_paddle_pos, paddle_dims);
+  moveRectDiffX(b_paddle_pos, paddle_dims);
+}
 
-  //// render -----------------
-  int bg_clr = COLOR_BLACK;
-  int obj_clr = COLOR_WHITE;
-  clearScreen(bg_clr);
+void wdt_c_handler() {
+  static int secCount = 1;
 
-  // draw paddles
-  drawRect(t_paddle_pos, paddle_dims, obj_clr);
-  drawRect(b_paddle_pos, paddle_dims, obj_clr);
+  secCount ++;
 
-  // draw ball
-  drawRect(ball_pos, ball_dims, obj_clr);
+  // TODO: reduce frequency for ALL of this
+  if (secCount % 5 == 0) {
+    secCount = 1;
+    
+    // now we gotta render
+    redrawScreen = 1;
 
-  // continuous game loop
-  while (1) {
-    // update top paddle
-    moveRect(t_paddle_pos, paddle_dims, t_paddle_dir, bg_clr, obj_clr);
+    // update positions
+    ball_pos[2] = ball_pos[0];
+    ball_pos[3] = ball_pos[1];
+    ball_pos[0] += ball_dir[0];
+    ball_pos[1] += ball_dir[1];
 
-    // update bottom paddle
-    moveRect(b_paddle_pos, paddle_dims, b_paddle_dir, bg_clr, obj_clr);
+    t_paddle_pos[2] = t_paddle_pos[0];
+    t_paddle_pos[3] = t_paddle_pos[1];
+    t_paddle_pos[0] += t_paddle_dir[0];
+    t_paddle_pos[1] += t_paddle_dir[1];
 
-    // update ball 
-    moveRect(ball_pos, ball_dims, ball_dir, bg_clr, obj_clr);
+    b_paddle_pos[2] = b_paddle_pos[0];
+    b_paddle_pos[3] = b_paddle_pos[1];
+    b_paddle_pos[0] += b_paddle_dir[0];
+    b_paddle_pos[1] += b_paddle_dir[1];
 
     // is ball hitting a wall
     if ((ball_pos[0] <= 0) || (ball_pos[0] + ball_dims[0] >= display_dims[0])) {
@@ -167,8 +196,7 @@ void main() {
 
     // did ball exit the field?
     if (ball_pos[1] <= 0 || ball_pos[1] + ball_dims[1] >= display_dims[1]) {
-      clearScreen(COLOR_RED);
-      break;
+      game_over = 1;
     }
 
     // did top paddle hit the edge?
@@ -181,6 +209,46 @@ void main() {
       b_paddle_dir[0] = 0;
     }
   }
+}
+
+void main() {
+  
+  P1DIR |= LED;		/**< Green led on when CPU on */
+  P1OUT |= LED;
+  configureClocks();
+  lcd_init();
+  switch_init();
+  sw0_init();
+  
+  enableWDTInterrupts();      /**< enable periodic interrupt */
+  or_sr(0x8);	              /**< GIE (enable interrupts) */
+  
+  clearScreen(bg_clr);
+
+  // draw paddles
+  drawRect(t_paddle_pos, paddle_dims, obj_clr);
+  drawRect(b_paddle_pos, paddle_dims, obj_clr);
+
+  // draw ball
+  drawRect(ball_pos, ball_dims, obj_clr);
+
+  while (!game_over) {
+    if (redrawScreen) {
+      redrawScreen = 0;
+
+      // DEBUG: check if this even gets called --> yes.
+      // clearScreen(COLOR_RED);
+      // return;
+
+      update_shape();
+    }
+    P1OUT &= ~LED;	/* led off */
+    or_sr(0x10);	/**< CPU OFF */
+    P1OUT |= LED;	/* led on */ 
+  }
+
+  // game over
+  clearScreen(COLOR_RED);
 }
 
 void sw0_interrupt_handler() {
@@ -196,12 +264,6 @@ void switch_interrupt_handler() {
   // save toggled switches and flip sensitivity
   char p2val = switch_update_interrupt_sense();
   switches = ~p2val & SWITCHES;
-
-  // // s1 --> set top dir to -1 if 0, else 0
-  // if (switches & SW1) t_paddle_dir[0] = -2;
-
-  // // s2 --> set top dir to 1 if 0, else 0
-  // if (switches & SW2) t_paddle_dir[0] = 2;
 
   // sw1 is now sw2 because sw2 is problematic
   if (switches & SW1) t_paddle_dir[0] = 2;
@@ -227,8 +289,4 @@ void __interrupt_vec(PORT2_VECTOR) Port_2() {
     P2IFG &= ~SWITCHES;
     switch_interrupt_handler();
   }
-}
-
-// watchdog timer
-void __interrupt_vec(WDT_VECTOR) WDT() {
 }
