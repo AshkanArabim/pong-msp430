@@ -1,10 +1,8 @@
 #include <msp430.h>
-#include <libTimer.h>
-#include <lcdutils.h>
-#include <lcddraw.h>
-#include "buzzer.h"
-#include "lcddraw.h"
+#include "libTimer.h"
 #include "lcdutils.h"
+#include "lcddraw.h"
+#include "buzzer.h"
 
 #define LED BIT6 /* note that bit zero req'd for display */
 
