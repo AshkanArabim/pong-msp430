@@ -87,19 +87,30 @@ void drawRect(int pos[], int dims[], int color) {
 }
 
 void moveRect(int pos[], int dims[]) {
+  // snapshot current rectangle (to avoid changes while drawing)
+  int curr_rect_pos[] = {pos[0], pos[1]};
+
   // get old rectangle pos
   int old_rect_pos[] = {pos[2], pos[3]};
+
   // clear old rectangle
   drawRect(old_rect_pos, dims, bg_clr);
 
   // new reclangle pos are implicit since first and second index don't change
   // draw new rectangle
-  drawRect(pos, dims, obj_clr);
+  drawRect(curr_rect_pos, dims, obj_clr);
+
+  // save current reclangle as old position
+  pos[2] = curr_rect_pos[0];
+  pos[3] = curr_rect_pos[1];
 }
 
 // clear only non-overlapping old pixels, draw non-overlapping new ones
 // only cares about x. it's hard (and unnecessary) to do both axes
 void moveRectDiffX(int pos[], int dims[]) {
+  // snapshot old rectangle (to avoid change while drawing)
+  int curr_rect_pos[] = {pos[0], pos[1]};
+
   int freed_rect_dims[] = {pos[0] - pos[2], dims[1]};
   char goingleft = 0;
   if (freed_rect_dims[0] < 0) {
@@ -118,7 +129,11 @@ void moveRectDiffX(int pos[], int dims[]) {
   drawRect(freed_rect_pos, freed_rect_dims, bg_clr);
 
   // draw new pixels
-  drawRect(pos, dims, obj_clr);  
+  drawRect(curr_rect_pos, dims, obj_clr);  
+
+  // save current rectangle pos as old state
+  pos[2] = curr_rect_pos[0];
+  pos[3] = curr_rect_pos[1];
 }
 
 int rangesOverlap(int r1[], int r2[]) {
@@ -161,18 +176,12 @@ void wdt_c_handler() {
     redrawScreen = 1;
 
     // update positions
-    ball_pos[2] = ball_pos[0];
-    ball_pos[3] = ball_pos[1];
     ball_pos[0] += ball_dir[0];
     ball_pos[1] += ball_dir[1];
 
-    t_paddle_pos[2] = t_paddle_pos[0];
-    t_paddle_pos[3] = t_paddle_pos[1];
     t_paddle_pos[0] += t_paddle_dir[0];
     t_paddle_pos[1] += t_paddle_dir[1];
 
-    b_paddle_pos[2] = b_paddle_pos[0];
-    b_paddle_pos[3] = b_paddle_pos[1];
     b_paddle_pos[0] += b_paddle_dir[0];
     b_paddle_pos[1] += b_paddle_dir[1];
 
