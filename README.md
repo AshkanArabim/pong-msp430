@@ -5,7 +5,7 @@ This is a simple pong game I've made for my computer organization class.
 Features include: 
 - Smooth graphics due to using interrupts for logic (Hence, no bottleneck caused by graphics).
 - A scoreboard.
-- Avoidance of the S2 input button (because it acted weird in my experience).
+- Avoidance of the S2 input button (because it acted weird on many MSP Launchpad boards).
 
 Interested in this project? Fork it and make it better!
 
